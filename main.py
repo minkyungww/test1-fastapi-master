@@ -19,12 +19,21 @@ class Cat(BaseModel):
     id: int = 0
 
 
+class RequestInsertRegionDTO(BaseModel):
+    regionName: str
+
+
+class RequestUpdateRegionDTO(BaseModel):
+    regionName: str
+    # regionId: int
+
+
 app = FastAPI()
 
 
 origins = [
-    "http://127.0.0.1:5500", # liveserver은 5500번 포트를 씀
-    "*", # *은 모든 포트 가능
+    "http://127.0.0.1:5500",  # liveserver은 5500번 포트를 씀
+    "*",  # *은 모든 포트 가능
 ]
 
 app.add_middleware(
@@ -83,11 +92,93 @@ async def check_file(
 @app.get("/findall")
 async def fetch_data():
 
-    await database.connect() # await는 연결할 때까지 기다리겠다는 뜻
+    await database.connect()  # await는 연결할 때까지 기다리겠다는 뜻
 
     query = "SELECT * FROM REGIONS"
-    results = await database.fetch_all(query=query) # fetch는 데이터를 가져오겠다느 뜻
+    results = await database.fetch_all(query=query)  # fetch는 데이터를 가져오겠다느 뜻
 
-    await database.disconnect() #데이터베이스 다 쓰고 나면 disconnect를 해줘야 함
+    await database.disconnect()  # 데이터베이스 다 쓰고 나면 disconnect를 해줘야 함
 
     return results
+
+
+@app.post("/insert")
+async def fetch_data(requestInsertRegionDTO: RequestInsertRegionDTO):
+
+    await database.connect()
+
+    error = False
+
+    try:
+        query = f"""INSERT INTO REGIONS
+                      (region_name)
+                    values
+                      ('{requestInsertRegionDTO.regionName}')"""
+        results = await database.execute(query)
+    except:
+        error = True
+    finally:
+        await database.disconnect()
+
+    if (error):
+        return "에러발생"
+
+    return results
+
+
+@app.put("/update/{id}")
+# RequestUpdateRegionDTO 추가하기
+async def update_data(id: int, requestUpdateRegionDTO: RequestUpdateRegionDTO):
+
+    await database.connect()
+
+    error = False
+
+    try:
+        query = f"UPDATE REGIONS SET REGION_NAME =('{requestUpdateRegionDTO.regionName}') WHERE REGION_ID =({id})"
+
+        results = await database.execute(query)
+    except:
+        error = True
+    finally:
+        await database.disconnect()
+
+    if (error):
+        return "에러발생"
+
+    return results
+
+
+@app.delete("/delete/{id}")
+async def update_data(id: int):
+
+    await database.connect()
+
+    error = False
+
+    try:
+        query = f"DELETE FROM REGIONS WHERE REGION_ID IN ({id})"
+
+        results = await database.execute(query)
+    except:
+        error = True
+    finally:
+        await database.disconnect()
+
+    if (error):
+        return "에러발생"
+
+    return results  # delete의 result는 1일 나와야 정상
+
+@app.post("/files-base64/")
+async def bas64_file(
+    uploadFile: str = Form(), token: str = Form()
+):
+    
+    
+    
+    # print(uploadFile)
+    return {
+        "token": token,
+        "uploadFile": uploadFile
+    }
